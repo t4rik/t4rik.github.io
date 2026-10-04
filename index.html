@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Portfolio Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        gh: {
+                            bg: '#0d1117',
+                            card: '#161b22',
+                            border: '#30363d',
+                            text: '#c9d1d9',
+                            muted: '#8b949e',
+                            green: '#238636',
+                            greenHover: '#2ea043',
+                            accent: '#58a6ff',
+                            lightBg: '#ffffff',
+                            lightCard: '#f6f8fa',
+                            lightBorder: '#d0d7de',
+                            lightText: '#1f2328',
+                            lightMuted: '#656d76',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        code, pre {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 4px;
+        }
+        .light ::-webkit-scrollbar-thumb {
+            background: #d0d7de;
+        }
+
+        /* Contribution Graph Cell Animations */
+        .contrib-cell {
+            transition: transform 0.15s ease, filter 0.15s ease;
+        }
+        .contrib-cell:hover {
+            transform: scale(1.3);
+            z-index: 10;
+        }
+
+        /* Markdown styling overrides */
+        .markdown-body h1, .markdown-body h2 {
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 0.3em;
+            margin-top: 1em;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+        .light .markdown-body h1, .light .markdown-body h2 {
+            border-bottom-color: #d0d7de;
+        }
+        .markdown-body ul {
+            list-style-type: disc;
+            padding-left: 2em;
+            margin-bottom: 16px;
+        }
+        .markdown-body p {
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+        .markdown-body code {
+            background-color: rgba(110, 118, 129, 0.2);
+            padding: 0.2em 0.4em;
+            border-radius: 6px;
+            font-size: 85%;
+        }
+        .markdown-body pre {
+            background-color: #161b22;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+        .light .markdown-body pre {
+            background-color: #f6f8fa;
+        }
+    </style>
+</head>
+<body class="bg-gh-bg text-gh-text light:bg-gh-lightBg light:text-gh-lightText min-h-screen flex flex-col transition-colors duration-200">
+
+    <!-- Navbar Header -->
+    <header class="bg-gh-card light:bg-gh-lightCard border-b border-gh-border light:border-gh-lightBorder sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <i class="fa-brands fa-github text-3xl cursor-pointer hover:opacity-80 transition" onclick="switchTab('overview')"></i>
+                <div class="relative hidden sm:block">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gh-muted text-sm"></i>
+                    <input type="text" id="repoSearchInput" oninput="filterRepositories()" placeholder="Search repositories..." 
+                        class="bg-gh-bg light:bg-white border border-gh-border light:border-gh-lightBorder rounded-md pl-9 pr-4 py-1.5 text-sm w-64 focus:outline-none focus:border-gh-accent transition">
+                </div>
+            </div>
+
+            <!-- Header Action Items -->
+            <div class="flex items-center space-x-3 sm:space-x-4">
+                <!-- Quick Search Modal Trigger (Mobile) -->
+                <button onclick="toggleMobileSearch()" class="sm:hidden p-2 text-gh-muted hover:text-gh-text">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+
+                <!-- Status Badge -->
+                <span class="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Open for Opportunities
+                </span>
+
+                <!-- Theme Switcher -->
+                <button id="themeToggleBtn" onclick="toggleTheme()" class="p-2 border border-gh-border light:border-gh-lightBorder rounded-lg hover:bg-gh-border/30 transition text-sm flex items-center gap-2">
+                    <i id="themeIcon" class="fa-solid fa-moon"></i>
+                    <span class="hidden lg:inline text-xs font-semibold" id="themeLabel">Dark</span>
+                </button>
+
+                <a href="https://github.com" target="_blank" class="bg-gh-green hover:bg-gh-greenHover text-white px-3 py-1.5 rounded-md text-sm font-medium transition flex items-center gap-2">
+                    <i class="fa-solid fa-plus text-xs"></i> New <span class="hidden sm:inline">Repo</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Mobile Search Dropdown -->
+        <div id="mobileSearch" class="hidden px-4 pb-3 sm:hidden">
+            <input type="text" oninput="filterRepositories()" placeholder="Search repositories..." 
+                class="w-full bg-gh-bg light:bg-white border border-gh-border light:border-gh-lightBorder rounded-md px-3 py-1.5 text-sm">
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="border-b border-gh-border light:border-gh-lightBorder bg-gh-card light:bg-gh-lightCard px-4 sm:px-8">
+        <div class="max-w-7xl mx-auto flex space-x-6 overflow-x-auto text-sm font-medium">
+            <button onclick="switchTab('overview')" id="tab-overview" class="py-3 px-1 border-b-2 border-orange-500 text-gh-text light:text-gh-lightText flex items-center gap-2 font-semibold whitespace-nowrap">
+                <i class="fa-regular fa-compass text-gh-muted"></i> Overview
+            </button>
+            <button onclick="switchTab('repositories')" id="tab-repositories" class="py-3 px-1 border-b-2 border-transparent text-gh-muted hover:text-gh-text flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-book-bookmark"></i> Repositories 
+                <span id="repoCountBadge" class="bg-gh-border/50 light:bg-gh-lightBorder px-2 py-0.5 rounded-full text-xs">6</span>
+            </button>
+            <button onclick="switchTab('readme')" id="tab-readme" class="py-3 px-1 border-b-2 border-transparent text-gh-muted hover:text-gh-text flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-file-lines"></i> README.md
+            </button>
+            <button onclick="switchTab('activity')" id="tab-activity" class="py-3 px-1 border-b-2 border-transparent text-gh-muted hover:text-gh-text flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-chart-line"></i> Activity Grid
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            
+            <!-- Left Sidebar: Profile Info -->
+            <aside class="lg:col-span-1 space-y-6">
+                <!-- User Card -->
+                <div class="flex flex-col items-center lg:items-start text-center lg:text-left">
+                    <div class="relative group">
+                        <img id="userAvatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80" 
+                             alt="Avatar" class="w-48 h-48 sm:w-64 sm:h-64 lg:w-full lg:h-auto rounded-full border-2 border-gh-border light:border-gh-lightBorder object-cover shadow-lg">
+                        <div class="absolute bottom-4 right-4 bg-gh-card light:bg-white border border-gh-border light:border-gh-lightBorder p-2 rounded-full cursor-pointer hover:scale-110 transition shadow" title="Status: Coding">
+                            💻
+                        </div>
+                    </div>
+
+                    <div class="mt-4 w-full">
+                        <h1 class="text-2xl font-bold text-gh-text light:text-gh-lightText" id="userName">Alex Rivera</h1>
+                        <h2 class="text-lg text-gh-muted font-light" id="userHandle">@alexrivera-dev</h2>
+                    </div>
+
+                    <p class="mt-3 text-sm text-gh-text light:text-gh-lightText leading-relaxed" id="userBio">
+                        Full-Stack Engineer & Open Source Enthusiast. Building high-performance web systems, cloud tools, and minimalist UI components.
+                    </p>
+
+                    <!-- Edit Profile Action Button -->
+                    <button onclick="openEditProfileModal()" class="w-full mt-4 py-1.5 px-4 bg-gh-card light:bg-gh-lightCard hover:bg-gh-border/40 border border-gh-border light:border-gh-lightBorder rounded-md text-sm font-medium transition shadow-sm">
+                        Edit profile
+                    </button>
+
+                    <!-- Profile Details List -->
+                    <div class="mt-6 space-y-2.5 text-sm text-gh-muted w-full text-left">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-users text-gh-muted w-4"></i>
+                            <span class="font-semibold text-gh-text light:text-gh-lightText" id="followerCount">1,284</span> followers
+                            <span>·</span>
+                            <span class="font-semibold text-gh-text light:text-gh-lightText" id="followingCount">342</span> following
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-building text-gh-muted w-4"></i>
+                            <span id="userOrg">DevCraft Labs</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-location-dot text-gh-muted w-4"></i>
+                            <span id="userLocation">San Francisco, CA</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-link text-gh-muted w-4"></i>
+                            <a href="#" class="text-gh-accent hover:underline truncate" id="userWebsite">https://alexrivera.dev</a>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fa-brands fa-x-twitter text-gh-muted w-4"></i>
+                            <a href="#" class="text-gh-accent hover:underline" id="userTwitter">@arivera_code</a>
+                        </div>
+                    </div>
+
+                    <!-- Achievements -->
+                    <div class="mt-6 pt-6 border-t border-gh-border light:border-gh-lightBorder w-full text-left">
+                        <h3 class="text-xs font-semibold text-gh-muted uppercase tracking-wider mb-3">Achievements</h3>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="inline-flex items-center p-2 rounded-full bg-gh-card light:bg-gh-lightCard border border-gh-border light:border-gh-lightBorder text-xl" title="Arctic Code Vault Contributor">❄️</span>
+                            <span class="inline-flex items-center p-2 rounded-full bg-gh-card light:bg-gh-lightCard border border-gh-border light:border-gh-lightBorder text-xl" title="Pull Shark">🦈</span>
+                            <span class="inline-flex items-center p-2 rounded-full bg-gh-card light:bg-gh-lightCard border border-gh-border light:border-gh-lightBorder text-xl" title="YOLO Deployment Master">🚀</span>
+                            <span class="inline-flex items-center p-2 rounded-full bg-gh-card light:bg-gh-lightCard border border-gh-border light:border-gh-lightBorder text-xl" title="Pair Extraordinaire">👥</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Right Dynamic Tab Content -->
+            <section class="lg:col-span-3 space-y-8">
+                
+                <!-- TAB 1: OVERVIEW SECTION -->
+                <div id="view-overview" class="tab-content space-y-8">
+                    <!-- Pinned Repositories Grid -->
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-base font-semibold text-gh-text light:text-gh-lightText">Pinned Repositories</h2>
+                            <span class="text-xs text-gh-muted cursor-pointer hover:text-gh-accent">Customize your pins</span>
+                        </div>
+                        <div id="pinnedReposGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Injected dynamically by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Contribution Graph Simulation -->
+                    <div class="border border-gh-border light:border-gh-lightBorder rounded-lg p-4 bg-gh-card/40 light:bg-white shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-semibold text-gh-text light:text-gh-lightText">
+                                <span id="totalContribsCount">1,492</span> contributions in the last year
+                            </h3>
+                            <div class="text-xs text-gh-muted flex items-center gap-1">
+                                <span>Less</span>
+                                <span class="w-2.5 h-2.5 rounded-sm bg-[#161b22]"></span>
+                                <span class="w-2.5 h-2.5 rounded-sm bg-[#0e4429]"></span>
+                                <span class="w-2.5 h-2.5 rounded-sm bg-[#006d32]"></span>
+                                <span class="w-2.5 h-2.5 rounded-sm bg-[#26a641]"></span>
+                                <span class="w-2.5 h-2.5 rounded-sm bg-[#39d353]"></span>
+                                <span>More</span>
+                            </div>
+                        </div>
+
+                        <!-- Contribution Matrix Grid Container -->
+                        <div class="overflow-x-auto pb-2">
+                            <div id="contribMatrix" class="inline-grid grid-rows-7 grid-flow-col gap-1 min-w-max">
+                                <!-- Generated by JS -->
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-gh-muted mt-2">
+                            <span>Learn how we count contributions</span>
+                            <div class="flex gap-2">
+                                <button onclick="randomizeContributions()" class="hover:text-gh-accent text-xs">🎲 Randomize Grid</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity Feed -->
+                    <div>
+                        <h3 class="text-base font-semibold mb-4 text-gh-text light:text-gh-lightText">Recent Activity</h3>
+                        <div class="space-y-4 border-l-2 border-gh-border light:border-gh-lightBorder pl-4 ml-2">
+                            <div class="relative group">
+                                <div class="absolute -left-[23px] top-1 w-3 h-3 rounded-full bg-gh-accent border-2 border-gh-bg"></div>
+                                <p class="text-sm text-gh-text light:text-gh-lightText">
+                                    Created commit <code class="text-xs text-gh-accent">a4f910e</code> in <a href="#" class="font-semibold hover:underline">alexrivera/hyper-react-ui</a>
+                                </p>
+                                <span class="text-xs text-gh-muted">2 hours ago</span>
+                            </div>
+                            <div class="relative group">
+                                <div class="absolute -left-[23px] top-1 w-3 h-3 rounded-full bg-green-500 border-2 border-gh-bg"></div>
+                                <p class="text-sm text-gh-text light:text-gh-lightText">
+                                    Opened pull request <a href="#" class="font-semibold text-gh-accent hover:underline">#42 Fix smooth scroll animation jitter</a>
+                                </p>
+                                <span class="text-xs text-gh-muted">Yesterday</span>
+                            </div>
+                            <div class="relative group">
+                                <div class="absolute -left-[23px] top-1 w-3 h-3 rounded-full bg-purple-500 border-2 border-gh-bg"></div>
+                                <p class="text-sm text-gh-text light:text-gh-lightText">
+                                    Starred <a href="#" class="font-semibold hover:underline">tailwindlabs/tailwindcss</a>
+                                </p>
+                                <span class="text-xs text-gh-muted">3 days ago</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: REPOSITORIES SECTION -->
+                <div id="view-repositories" class="tab-content hidden space-y-4">
+                    <!-- Filter Controls -->
+                    <div class="flex flex-col sm:flex-row gap-3 pb-4 border-b border-gh-border light:border-gh-lightBorder">
+                        <input type="text" id="repoTabSearch" oninput="filterRepositories()" placeholder="Find a repository..." 
+                            class="flex-1 bg-gh-bg light:bg-white border border-gh-border light:border-gh-lightBorder rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-gh-accent">
+                        
+                        <div class="flex gap-2">
+                            <select id="langFilter" onchange="filterRepositories()" class="bg-gh-card light:bg-gh-lightCard border border-gh-border light:border-gh-lightBorder rounded-md px-3 py-1.5 text-sm text-gh-text light:text-gh-lightText">
+                                <option value="All">All Languages</option>
+                                <option value="TypeScript">TypeScript</option>
+                                <option value="JavaScript">JavaScript</option>
+                                <option value="Python">Python</option>
+                                <option value="Rust">Rust</option>
+                                <option value="HTML">HTML</option>
+                            </select>
+
+                            <select id="typeFilter" onchange="filterRepositories()" class="bg-gh-card light:bg-gh-lightCard border border-gh-border light:border-gh-lightBorder rounded-md px-3 py-1.5 text-sm text-gh-text light:text-gh-lightText">
+                                <option value="All">All Types</option>
+                                <option value="Public">Public</option>
+                                <option value="Sources">Sources</option>
+                                <option value="Forks">Forks</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Repositories List Container -->
+                    <div id="fullRepoList" class="divide-y divide-gh-border light:divide-gh-lightBorder">
+                        <!-- Dynamically filled by JS -->
+                    </div>
+                </div>
+
+                <!-- TAB 3: MARKDOWN README PREVIEWER -->
+                <div id="view-readme" class="tab-content hidden space-y-4">
+                    <div class="border border-gh-border light:border-gh-lightBorder rounded-lg overflow-hidden bg-gh-card/20 light:bg-white shadow-sm">
+                        <!-- Readme Bar Header -->
+                        <div class="bg-gh-card light:bg-gh-lightCard px-4 py-3 border-b border-gh-border light:border-gh-lightBorder flex items-center justify-between">
+                            <div class="flex items-center gap-2 text-sm font-semibold">
+                                <i class="fa-solid fa-list-ul text-gh-muted"></i> README.md
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="toggleReadmeEdit()" id="readmeEditBtn" class="text-xs bg-gh-bg light:bg-white border border-gh-border light:border-gh-lightBorder px-3 py-1 rounded-md hover:bg-gh-border/30 transition">
+                                    <i class="fa-solid fa-pen mr-1"></i> Edit Markdown
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Readme View & Editor Layout -->
+                        <div class="p-6">
+                            <!-- Preview Box -->
+                            <div id="readmePreview" class="markdown-body text-gh-text light:text-gh-lightText">
+                                <!-- Parsed Markdown Rendered Here -->
+                            </div>
+
+                            <!-- Live Editor Box (Hidden by default) -->
+                            <div id="readmeEditorContainer" class="hidden space-y-4">
+                                <textarea id="readmeInput" class="w-full h-80 bg-gh-bg light:bg-white border border-gh-border light:border-gh-lightBorder rounded-md p-4 text-sm font-mono focus:outline-none focus:border-gh-accent" oninput="renderMarkdown()"></textarea>
+                                <p class="text-xs text-gh-muted">Markdown parses automatically as you type!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 4: ACTIVITY & STATS DETAILED GRID -->
+                <div id="view-activity" class="tab-content hidden space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-gh-card light:bg-gh-lightCard border border-gh-border light:border-gh-lightBorder rounded-lg p-5">
+                            <span class="text-xs font-semibold text-gh-muted uppercase tracking-wider">Total Commits</span>
+                            <div class="text-3xl font-bold mt-2 text-gh-text light:text-gh-lightText">2,841</div>
+                            <p class="text-xs text-green-400 mt-2"><i class="fa-solid fa-arrow-trend-up"></i> +14% from last month</p>
+                        </div>
+                        <div class="bg-gh-card light:bg-gh-lightCard border border-gh-border light:border-gh-lightBorder rounded-lg p-5">
+                            <span class="text-xs font-semibold text-gh-muted uppercase tracking-wider">Pull Requests</span>
+                            <div class="text-3xl font-bold mt-2 text-gh-text light:text-gh-lightText">194</div>
+                            <p class="text-xs text-gh-accent mt-2"><i class="fa-solid fa-code-pull-request"></i> 98% merge rate</p>
+                        </div>
+                        <div class="bg-gh-card light:bg-gh-lightCard border border-gh-border light:border-gh-lightBorder rounded-lg p-5">
+                            <span class="text-xs font-semibold text-gh-muted uppercase tracking-wider">Code Reviews</span>
+                            <div class="text-3xl font-bold mt-2 text-gh-text light:text-gh-lightText">312</div>
+                            <p class="text-xs text-purple-400 mt-2"><i class="fa-solid fa-check-double"></i> Top 5% reviewer</p>
+                        </div>
+                    </div>
+
+                    <!-- Language Usage Breakdown Bar -->
+                    <div class="border border-gh-border light:border-gh-lightBorder rounded-lg p-5 bg-gh-card light:bg-gh-lightCard">
+                        <h3 class="text-sm font-semibold mb-3">Most Used Languages</h3>
+                        <div class="w-full h-3 bg-gh-bg rounded-full overflow-hidden flex">
+                            <div class="bg-blue-500 h-full" style="width: 45%" title="TypeScript 45%"></div>
+                            <div class="bg-yellow-400 h-full" style="width: 25%" title="JavaScript 25%"></div>
+                            <div class="bg-cyan-500 h-full" style="width: 15%" title="Go 15%"></div>
+                            <div class="bg-orange-600 h-full" style="width: 10%" title="HTML 10%"></div>
+                            <div class="bg-purple-500 h-full" style="width: 5%" title="Other 5%"></div>
+                        </div>
+                        <div class="flex flex-wrap gap-4 mt-4 text-xs">
+                            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500"></span> TypeScript (45%)</div>
+                            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-yellow-400"></span> JavaScript (25%)</div>
+                            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-cyan-500"></span> Go (15%)</div>
+                            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-orange-600"></span> HTML (10%)</div>
+                            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-purple-500"></span> Other (5%)</div>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+        </div>
+    </main>
+
+    <!-- Code Viewer Modal -->
+    <div id="codeModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-gh-card light:bg-white border border-gh-border light:border-gh-lightBorder rounded-xl max-w-3xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="bg-gh-bg light:bg-gh-lightCard px-4 py-3 border-b border-gh-border light:border-gh-lightBorder flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-code text-gh-accent"></i>
+                    <span id="modalRepoName" class="font-semibold text-sm">repository/file.js</span>
+                </div>
+                <button onclick="closeCodeModal()" class="text-gh-muted hover:text-gh-text p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+                <pre><code id="modalCodeContent" class="text-xs text-gh-text light:text-gh-lightText font-mono leading-relaxed"></code></pre>
+            </div>
+            <div class="bg-gh-bg light:bg-gh-lightCard px-4 py-2.5 border-t border-gh-border light:border-gh-lightBorder flex justify-between items-center text-xs text-gh-muted">
+                <span id="modalLanguageLabel">JavaScript</span>
+                <button onclick="copyModalCode()" class="hover:text-gh-accent flex items-center gap-1">
+                    <i class="fa-regular fa-copy"></i> Copy Raw Code
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-gh-card light:bg-white border border-gh-border light:border-gh-lightBorder rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <h3 class="text-lg font-bold border-b border-gh-border light:border-gh-lightBorder pb-3">Edit Public Profile</h3>
+            
+            <div class="space-y-3 text-sm">
+                <div>
+                    <label class="block text-xs font-semibold text-gh-muted mb-1">Name</label>
+                    <input type="text" id="editNameInput" class="w-full bg-gh-bg light:bg-gh-lightCard border border-gh-border light:border-gh-lightBorder rounded px-3 py-1.5 focus:outline-none focus:border-gh-accent">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gh-muted mb-1">Bio</label>
+                    <textarea id="editBioInput" rows="3" class="w-full bg-gh-bg light:bg-gh-lightCard border border-gh-border light:border-gh-lightBorder rounded px-3 py-1.5 focus:outline-none focus:border-gh-accent"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gh-muted mb-1">Company / Org</label>
+                    <input type="text" id="editOrgInput" class="w-full bg-gh-bg light:bg-gh-lightCard border border-gh-border light:border-gh-lightBorder rounded px-3 py-1.5 focus:outline-none focus:border-gh-accent">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gh-muted mb-1">Location</label>
+                    <input type="text" id="editLocInput" class="w-full bg-gh-bg light:bg-gh-lightCard border border-gh-border light:border-gh-lightBorder rounded px-3 py-1.5 focus:outline-none focus:border-gh-accent">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-3 border-t border-gh-border light:border-gh-lightBorder">
+                <button onclick="closeEditProfileModal()" class="px-4 py-1.5 border border-gh-border light:border-gh-lightBorder rounded-md text-xs font-semibold hover:bg-gh-border/20">Cancel</button>
+                <button onclick="saveProfileChanges()" class="px-4 py-1.5 bg-gh-green hover:bg-gh-greenHover text-white rounded-md text-xs font-semibold">Save Profile</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-gh-card light:bg-white border border-gh-accent px-4 py-3 rounded-lg shadow-xl text-sm hidden items-center gap-3 z-50">
+        <i class="fa-solid fa-circle-check text-green-400"></i>
+        <span id="toastMsg">Action completed successfully</span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-gh-border light:border-gh-lightBorder py-6 bg-gh-card light:bg-gh-lightCard text-xs text-gh-muted">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <i class="fa-brands fa-github text-lg"></i>
+                <span>© 2026 GitHub Portfolio Mockup, Inc.</span>
+            </div>
+            <div class="flex flex-wrap gap-4 text-gh-muted">
+                <a href="#" class="hover:text-gh-accent">Terms</a>
+                <a href="#" class="hover:text-gh-accent">Privacy</a>
+                <a href="#" class="hover:text-gh-accent">Security</a>
+                <a href="#" class="hover:text-gh-accent">Docs</a>
+                <a href="#" class="hover:text-gh-accent">Contact</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Sample Repositories Data Store
+        const repositories = [
+            {
+                id: 1,
+                name: "hyper-react-ui",
+                desc: "An ultra-fast, accessible, and headless React component library built with Tailwind CSS.",
+                lang: "TypeScript",
+                langColor: "#3178c6",
+                stars: 1420,
+                forks: 184,
+                pinned: true,
+                isPrivate: false,
+                topics: ["react", "ui-kit", "tailwind", "design-system"],
+                updated: "2 hours ago",
+                codeSample: `// hyper-react-ui/src/Button.tsx
+import React from 'react';
+
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'danger';
+}
+
+export const Button: React.FC<ButtonProps> = ({ variant = 'primary', children, ...props }) => {
+  const styles = {
+    primary: 'bg-blue-600 hover:bg-blue-700 text-white',
+    secondary: 'bg-gray-700 hover:bg-gray-800 text-gray-100',
+    danger: 'bg-red-600 hover:bg-red-700 text-white'
+  };
+
+  return (
+    <button className={\`px-4 py-2 rounded-lg transition font-medium \${styles[variant]}\`} {...props}>
+      {children}
+    </button>
+  );
+};`
+            },
+            {
+                id: 2,
+                name: "quantum-cache-engine",
+                desc: "In-memory distributed key-value store optimized for low-latency node clustering written in Rust.",
+                lang: "Rust",
+                langColor: "#dea584",
+                stars: 890,
+                forks: 92,
+                pinned: true,
+                isPrivate: false,
+                topics: ["rust", "database", "distributed-systems", "cache"],
+                updated: "Yesterday",
+                codeSample: `// quantum-cache/src/main.rs
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+struct CacheEngine {
+    store: Arc<Mutex<HashMap<String, String>>>,
+}
+
+impl CacheEngine {
+    fn new() -> Self {
+        CacheEngine { store: Arc::new(Mutex::new(HashMap::new())) }
+    }
+
+    fn set(&self, key: String, val: String) {
+        let mut map = self.store.lock().unwrap();
+        map.insert(key, val);
+    }
+}`
+            },
+            {
+                id: 3,
+                name: "ai-prompt-compiler",
+                desc: "Python library to convert structured JSON schemas into optimized LLM prompt trees.",
+                lang: "Python",
+                langColor: "#3572A5",
+                stars: 432,
+                forks: 35,
+                pinned: true,
+                isPrivate: false,
+                topics: ["python", "ai", "llm", "prompts"],
+                updated: "3 days ago",
+                codeSample: `# ai-prompt-compiler/compiler.py
+class PromptCompiler:
+    def __init__(self, schema: dict):
+        self.schema = schema
+
+    def compile(self) -> str:
+        instructions = [f"- {k}: {v}" for k, v in self.schema.get("rules", {}).items()]
+        return "System Instructions:\\n" + "\\n".join(instructions)`
+            },
+            {
+                id: 4,
+                name: "dev-portfolio-template",
+                desc: "Minimalist, responsive GitHub style dashboard for developers built in pure HTML/JS.",
+                lang: "HTML",
+                langColor: "#e34c26",
+                stars: 612,
+                forks: 104,
+                pinned: true,
+                isPrivate: false,
+                topics: ["html", "tailwind", "portfolio", "javascript"],
+                updated: "4 days ago",
+                codeSample: `<!-- index.html -->
+<div class="profile-card">
+  <h2>Alex Rivera</h2>
+  <p>Full-Stack Engineer</p>
+</div>`
+            },
+            {
+                id: 5,
+                name: "node-microservice-kit",
+                desc: "Boilerplate for production ready Node.js microservices with Docker and Redis integration.",
+                lang: "JavaScript",
+                langColor: "#f1e05a",
+                stars: 215,
+                forks: 41,
+                pinned: false,
+                isPrivate: false,
+                topics: ["nodejs", "express", "docker", "microservices"],
+                updated: "1 week ago",
+                codeSample: `// server.js
+const express = require('express');
+const app = express();
+
+app.get('/health', (req, res) => res.json({ status: 'UP' }));
+app.listen(3000, () => console.log('Server online on 3000'));`
+            },
+            {
+                id: 6,
+                name: "wasm-image-filter",
+                desc: "Real-time browser-based image filter library powered by WebAssembly.",
+                lang: "Rust",
+                langColor: "#dea584",
+                stars: 310,
+                forks: 18,
+                pinned: false,
+                isPrivate: false,
+                topics: ["wasm", "rust", "image-processing", "graphics"],
+                updated: "2 weeks ago",
+                codeSample: `// lib.rs
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+pub fn apply_grayscale(pixels: &mut [u8]) {
+    for chunk in pixels.chunks_exact_mut(4) {
+        let avg = (chunk[0] as u16 + chunk[1] as u16 + chunk[2] as u16) / 3;
+        chunk[0] = avg as u8;
+        chunk[1] = avg as u8;
+        chunk[2] = avg as u8;
+    }
+}`
+            }
+        ];
+
+        let defaultReadmeContent = `# Hi there, I'm Alex Rivera 👋
+
+### 🚀 Senior Full-Stack & Open Source Developer
+
+I build **scalable web architectures**, developer tooling, and modern UI systems. Currently exploring high-performance distributed systems in **Rust** and reactive web frontend architectures.
+
+---
+
+### 💻 Primary Tech Stack
+- **Languages:** TypeScript, JavaScript, Rust, Python, Go
+- **Frontend:** React, Next.js, Tailwind CSS, Web Components
+- **Backend:** Node.js, Express, PostgreSQL, Redis, GraphQL
+- **DevOps:** Docker, Kubernetes, GitHub Actions, AWS
+
+---
+
+### 📈 Current Focus & Projects
+- 🛠️ Maintaining [\`hyper-react-ui\`](#) - Modern accessible headless UI library
+- ⚡ Building [\`quantum-cache-engine\`](#) - Rust-powered in-memory key-value store
+- ✍️ Writing articles about web performance and browser engine internals
+
+> *"Simplicity is prerequisite for reliability."* — Edsger W. Dijkstra
+`;
+
+        // INITIALIZATION
+        window.addEventListener('DOMContentLoaded', () => {
+            renderPinnedRepos();
+            renderAllRepos(repositories);
+            generateContribMatrix();
+            initReadme();
+        });
+
+        // Theme Toggle Handler
+        function toggleTheme() {
+            const html = document.documentElement;
+            const themeIcon = document.getElementById('themeIcon');
+            const themeLabel = document.getElementById('themeLabel');
+
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                html.classList.add('light');
+                themeIcon.className = 'fa-solid fa-sun';
+                themeLabel.textContent = 'Light';
+            } else {
+                html.classList.remove('light');
+                html.classList.add('dark');
+                themeIcon.className = 'fa-solid fa-moon';
+                themeLabel.textContent = 'Dark';
+            }
+        }
+
+        // Tab Switcher Handler
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            
+            // Tab Buttons active styling
+            ['overview', 'repositories', 'readme', 'activity'].forEach(id => {
+                const btn = document.getElementById(`tab-${id}`);
+                if (btn) {
+                    if (id === tabId) {
+                        btn.className = "py-3 px-1 border-b-2 border-orange-500 text-gh-text light:text-gh-lightText flex items-center gap-2 font-semibold whitespace-nowrap";
+                    } else {
+                        btn.className = "py-3 px-1 border-b-2 border-transparent text-gh-muted hover:text-gh-text flex items-center gap-2 whitespace-nowrap";
+                    }
+                }
+            });
+
+            const activeView = document.getElementById(`view-${tabId}`);
+            if (activeView) activeView.classList.remove('hidden');
+        }
+
+        // Render Pinned Repos
+        function renderPinnedRepos() {
+            const container = document.getElementById('pinnedReposGrid');
+            const pinned = repositories.filter(r => r.pinned);
+
+            container.innerHTML = pinned.map(repo => `
+                <div class="border border-gh-border light:border-gh-lightBorder rounded-lg p-4 bg-gh-card/50 light:bg-gh-lightCard/50 flex flex-col justify-between hover:border-gh-muted transition group">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <a onclick="openCodeModal(${repo.id})" class="font-semibold text-gh-accent hover:underline flex items-center gap-2 cursor-pointer">
+                                <i class="fa-solid fa-book-bookmark text-gh-muted text-xs"></i>
+                                ${repo.name}
+                            </a>
+                            <span class="text-xs px-2 py-0.5 rounded-full border border-gh-border light:border-gh-lightBorder text-gh-muted">Public</span>
+                        </div>
+                        <p class="text-xs text-gh-muted line-clamp-2 mb-4 leading-relaxed">${repo.desc}</p>
+                    </div>
+
+                    <div>
+                        <div class="flex flex-wrap gap-1.5 mb-3">
+                            ${repo.topics.map(t => `<span class="text-[10px] bg-gh-accent/10 text-gh-accent px-2 py-0.5 rounded-full">${t}</span>`).join('')}
+                        </div>
+                        <div class="flex items-center gap-4 text-xs text-gh-muted">
+                            <span class="flex items-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${repo.langColor}"></span>
+                                ${repo.lang}
+                            </span>
+                            <span class="hover:text-gh-accent cursor-pointer"><i class="fa-regular fa-star"></i> ${repo.stars}</span>
+                            <span class="hover:text-gh-accent cursor-pointer"><i class="fa-solid fa-code-branch"></i> ${repo.forks}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render All Repositories in Tab 2
+        function renderAllRepos(repoList) {
+            const container = document.getElementById('fullRepoList');
+            document.getElementById('repoCountBadge').innerText = repoList.length;
+
+            if (repoList.length === 0) {
+                container.innerHTML = `<p class="py-8 text-center text-gh-muted text-sm">No repositories match your search or filter criteria.</p>`;
+                return;
+            }
+
+            container.innerHTML = repoList.map(repo => `
+                <div class="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="space-y-1.5 max-w-xl">
+                        <div class="flex items-center gap-2">
+                            <a onclick="openCodeModal(${repo.id})" class="text-lg font-semibold text-gh-accent hover:underline cursor-pointer">${repo.name}</a>
+                            <span class="text-xs px-2 py-0.5 rounded-full border border-gh-border light:border-gh-lightBorder text-gh-muted font-normal">Public</span>
+                        </div>
+                        <p class="text-xs text-gh-muted leading-relaxed">${repo.desc}</p>
+                        <div class="flex items-center gap-4 text-xs text-gh-muted pt-2">
+                            <span class="flex items-center gap-1">
+                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${repo.langColor}"></span>
+                                ${repo.lang}
+                            </span>
+                            <span><i class="fa-regular fa-star"></i> ${repo.stars}</span>
+                            <span><i class="fa-solid fa-code-branch"></i> ${repo.forks}</span>
+                            <span>Updated ${repo.updated}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleStar(${repo.id})" class="px-3 py-1 bg-gh-card light:bg-gh-lightCard hover:bg-gh-border/30 border border-gh-border light:border-gh-lightBorder rounded-md text-xs font-semibold flex items-center gap-1.5 transition">
+                            <i class="fa-regular fa-star text-yellow-500"></i> Star
+                        </button>
+                        <button onclick="openCodeModal(${repo.id})" class="px-3 py-1 bg-gh-card light:bg-gh-lightCard hover:bg-gh-border/30 border border-gh-border light:border-gh-lightBorder rounded-md text-xs font-semibold flex items-center gap-1.5 transition">
+                            <i class="fa-solid fa-code"></i> Code
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Repository Search and Filter logic
+        function filterRepositories() {
+            const query = (document.getElementById('repoSearchInput').value || document.getElementById('repoTabSearch').value).toLowerCase();
+            const selectedLang = document.getElementById('langFilter').value;
+
+            const filtered = repositories.filter(repo => {
+                const matchesSearch = repo.name.toLowerCase().includes(query) || repo.desc.toLowerCase().includes(query);
+                const matchesLang = selectedLang === 'All' || repo.lang === selectedLang;
+                return matchesSearch && matchesLang;
+            });
+
+            renderAllRepos(filtered);
+        }
+
+        // Generate Contribution Graph Grid
+        function generateContribMatrix() {
+            const container = document.getElementById('contribMatrix');
+            container.innerHTML = '';
+            
+            // Generate 52 weeks * 7 days = 364 cells
+            const levels = ['bg-[#161b22]', 'bg-[#0e4429]', 'bg-[#006d32]', 'bg-[#26a641]', 'bg-[#39d353]'];
+            
+            for (let i = 0; i < 364; i++) {
+                // Random weight generation biased towards lower activity for realistic distribution
+                const rand = Math.random();
+                let levelIdx = 0;
+                if (rand > 0.85) levelIdx = 4;
+                else if (rand > 0.65) levelIdx = 3;
+                else if (rand > 0.45) levelIdx = 2;
+                else if (rand > 0.25) levelIdx = 1;
+
+                const cell = document.createElement('div');
+                cell.className = `w-3 h-3 rounded-sm contrib-cell ${levels[levelIdx]}`;
+                cell.title = `Contributions on date: ${levelIdx * 3 + 1} commits`;
+                container.appendChild(cell);
+            }
+        }
+
+        function randomizeContributions() {
+            generateContribMatrix();
+            showToast("Contribution matrix regenerated!");
+        }
+
+        // Markdown Engine Initialization
+        function initReadme() {
+            document.getElementById('readmeInput').value = defaultReadmeContent;
+            renderMarkdown();
+        }
+
+        function renderMarkdown() {
+            const input = document.getElementById('readmeInput').value;
+            const preview = document.getElementById('readmePreview');
+            preview.innerHTML = marked.parse(input);
+        }
+
+        function toggleReadmeEdit() {
+            const preview = document.getElementById('readmePreview');
+            const editor = document.getElementById('readmeEditorContainer');
+            const btn = document.getElementById('readmeEditBtn');
+
+            if (editor.classList.contains('hidden')) {
+                editor.classList.remove('hidden');
+                preview.classList.add('hidden');
+                btn.innerHTML = '<i class="fa-solid fa-eye mr-1"></i> View Preview';
+            } else {
+                editor.classList.add('hidden');
+                preview.classList.remove('hidden');
+                btn.innerHTML = '<i class="fa-solid fa-pen mr-1"></i> Edit Markdown';
+            }
+        }
+
+        // Code Preview Modal Actions
+        function openCodeModal(repoId) {
+            const repo = repositories.find(r => r.id === repoId);
+            if (!repo) return;
+
+            document.getElementById('modalRepoName').innerText = `${repo.name} - Sample Code`;
+            document.getElementById('modalCodeContent').innerText = repo.codeSample;
+            document.getElementById('modalLanguageLabel').innerText = repo.lang;
+            document.getElementById('codeModal').classList.remove('hidden');
+        }
+
+        function closeCodeModal() {
+            document.getElementById('codeModal').classList.add('hidden');
+        }
+
+        function copyModalCode() {
+            const codeText = document.getElementById('modalCodeContent').innerText;
+            document.execCommand('copy');
+            showToast("Code copied to clipboard!");
+        }
+
+        // Profile Edit Modal Actions
+        function openEditProfileModal() {
+            document.getElementById('editNameInput').value = document.getElementById('userName').innerText;
+            document.getElementById('editBioInput').value = document.getElementById('userBio').innerText;
+            document.getElementById('editOrgInput').value = document.getElementById('userOrg').innerText;
+            document.getElementById('editLocInput').value = document.getElementById('userLocation').innerText;
+            document.getElementById('editProfileModal').classList.remove('hidden');
+        }
+
+        function closeEditProfileModal() {
+            document.getElementById('editProfileModal').classList.add('hidden');
+        }
+
+        function saveProfileChanges() {
+            document.getElementById('userName').innerText = document.getElementById('editNameInput').value;
+            document.getElementById('userBio').innerText = document.getElementById('editBioInput').value;
+            document.getElementById('userOrg').innerText = document.getElementById('editOrgInput').value;
+            document.getElementById('userLocation').innerText = document.getElementById('editLocInput').value;
+            closeEditProfileModal();
+            showToast("Profile details updated successfully!");
+        }
+
+        function toggleStar(repoId) {
+            const repo = repositories.find(r => r.id === repoId);
+            if (repo) {
+                repo.stars += 1;
+                filterRepositories();
+                renderPinnedRepos();
+                showToast(`Starred ${repo.name}!`);
+            }
+        }
+
+        function toggleMobileSearch() {
+            const el = document.getElementById('mobileSearch');
+            el.classList.toggle('hidden');
+        }
+
+        // Toast Helper
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = message;
+            toast.classList.remove('hidden');
+            toast.classList.add('flex');
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+                toast.classList.remove('flex');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
